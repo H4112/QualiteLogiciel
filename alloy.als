@@ -16,27 +16,29 @@ fun distance[i1,i2: Intersection]: Int {
 
 sig Produit {}
 
+sig Time {}
+
 sig Intersection {
     x,y : Int
 }
 
 sig Drone {
-    i: Intersection,
-    produits: some Produit,
-    destination: Receptacle
+    i: Intersection->Time,
+    produits: Produit->Time,
+    destination: Receptacle->Time
 }
 
 sig Receptacle {
     i: Intersection,
-    produits: set Produit
+    produits: Produit->Time
 }
 
 sig Commande {
-    produits: some Produit,
+    produits: Produit->Time,
     adresse: Receptacle
 }
 
-sig Entrepot extends Receptacle {}
+one sig Entrepot extends Receptacle {}
 
 fact Map { all i : Intersection | i.x >=0 && i.y >= 0 && i.x <= MAPSIZE && i.y <= MAPSIZE }
 
@@ -44,16 +46,26 @@ fact NbDrones { #Drone = DNB }
 
 fact NbReceptacles { #Receptacle >= 2 && #Receptacle = RNB }
 
-fact UnEntrepot { #Entrepot = 1 }
+fact CapaciteDrone { all d: Drone, t: Time | #d.produits.t <= DCAP }
 
-fact CapaciteDrone { all d: Drone | #d.produits <= DCAP }
-
-fact CapaciteReceptacle { all r: Receptacle | #r.produits <= RCAP }
+fact CapaciteReceptacle { all r: Receptacle, t: Time | #r.produits.t <= RCAP }
 
 fact Chemin { all r: Receptacle, e: Entrepot | some s: set Receptacle | r in s && e in s && all r1,r2: s | distance[r1.i, r2.i] <= 3 }
 
-assert Different { all r1,r2: Receptacle | r1.i != r2.i }
+pred init[t: Time] {
+	no Drone.produits.t
+    no Commande
+    one e: Entrepot | all r:Receptacle | r = e || no r.produits.t
+    one e: Entrepot | all d: Drone | e.i = d.i
+    no Drone.destination.t
+}
 
-check Different
+pred Simulation {
+	init[first]
+    all t: Time - last | let t' = t.next | -- between each timestep
+    all d: Drone
+    move[t,t',d]
+}
 
+run Simulation for exactly 3 Drone, 2 Receptacle
 

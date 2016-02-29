@@ -11,7 +11,6 @@
 
 <node>
    <type name="Int"/>
-   <type name="LaCommande"/>
    <type name="String"/>
    <type name="Time"/>
    <type name="univ"/>
@@ -19,20 +18,16 @@
    <type name="seq/Int"/>
 </node>
 
-<node shape="Box" color="Blue">
+<node shape="Dbl Circle" color="Red">
+   <type name="Receptacle"/>
+</node>
+
+<node shape="Ellipse" color="Black">
    <type name="Drone"/>
 </node>
 
-<node shape="Hexagon" color="White">
-   <type name="Produit"/>
-</node>
-
-<node shape="Inv House">
+<node shape="House">
    <type name="Entrepot"/>
-</node>
-
-<node shape="Inv Triangle" color="Red">
-   <type name="Receptacle"/>
 </node>
 
 <node shape="Lined Diamond" color="Gray">
@@ -58,9 +53,19 @@
    <type name="Chain"/>
 </node>
 
+<node visible="no" shape="Hexagon" color="White">
+   <type name="Produit"/>
+</node>
+
 <edge visible="no" attribute="yes">
    <relation name="x"> <type name="Intersection"/> <type name="Int"/> </relation>
    <relation name="y"> <type name="Intersection"/> <type name="Int"/> </relation>
+</edge>
+
+<edge visible="no" layout="yes" attribute="yes">
+   <relation name="produits"> <type name="Commande"/> <type name="Produit"/> </relation>
+   <relation name="produits"> <type name="Drone"/> <type name="Produit"/> </relation>
+   <relation name="produits"> <type name="Receptacle"/> <type name="Produit"/> </relation>
 </edge>
 
 </view>

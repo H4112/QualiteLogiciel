@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<alloy>
+
+<view nodetheme="Martha">
+
+<projection> <type name="Time"/> </projection>
+
+<defaultnode/>
+
+<defaultedge/>
+
+<node>
+   <type name="Int"/>
+   <type name="LaCommande"/>
+   <type name="String"/>
+   <type name="Time"/>
+   <type name="univ"/>
+   <type name="boolean/Bool"/>
+   <type name="seq/Int"/>
+</node>
+
+<node shape="Box" color="Blue">
+   <type name="Drone"/>
+</node>
+
+<node shape="Hexagon" color="White">
+   <type name="Produit"/>
+</node>
+
+<node shape="Inv House">
+   <type name="Entrepot"/>
+</node>
+
+<node shape="Inv Triangle" color="Red">
+   <type name="Receptacle"/>
+</node>
+
+<node shape="Lined Diamond" color="Gray">
+   <type name="Intersection"/>
+</node>
+
+<node shape="Parallelogram" color="Green">
+   <type name="Commande"/>
+</node>
+
+<node style="Bold">
+   <set name="First" type="to/Ord"/>
+   <set name="Next" type="to/Ord"/>
+</node>
+
+<node visible="no">
+   <type name="boolean/False"/>
+   <type name="boolean/True"/>
+   <type name="to/Ord"/>
+</node>
+
+<node visible="no" shape="Ellipse" color="Yellow">
+   <type name="Chain"/>
+</node>
+
+<edge visible="no" attribute="yes">
+   <relation name="x"> <type name="Intersection"/> <type name="Int"/> </relation>
+   <relation name="y"> <type name="Intersection"/> <type name="Int"/> </relation>
+</edge>
+
+</view>
+
+</alloy>

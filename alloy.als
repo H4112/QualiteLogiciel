@@ -1,6 +1,5 @@
 //permet de faire des sommes, des produits...
 open util/integer
-open util/boolean
 //permet d'utiliser time.next pour se déplacer dans le temps
 open util/ordering[Time] as to
 
@@ -92,19 +91,21 @@ sig Chain {
 //deux Chain différents font référence à des éléments différents
 //ça va poser problème
 fact UniqueChain {
-	all disj a,b: Chain | a.that != b.that && a.nextc != b.nextc
+	all disj a,b: Chain | a.that != b.that || a.nextc != b.nextc
 }
 
 //chaque point doit être séparé du précédent par 3 au max
+
 fact ChainMaxDist {
 	all c: Chain | one c.nextc => distance[c.that.i, c.nextc.that.i] <= 3
 }
 
 //il existe toujours une suite de réceptacles (chemin) entre l'entrepôt et n'importe quel réceptacle,
 //où chaque réceptacle de cette suite est séparé du précédent par une distance d'au plus 3
+
 fact CheminExiste {
-	one e: Entrepot | all r: Receptacle | some _: Chain |
-		e != r => Chemin[e, r, _]
+	one e: Entrepot | all r: Receptacle |
+		e != r => (some _: Chain | Chemin[e, r, _])
 }
 
 pred Chemin[depr, arrr: Receptacle, chemin: Chain] {
@@ -127,7 +128,7 @@ pred init[t: Time] {
 	//soit r est l'entrepôt, soit c'est un réceptacle et donc pas de produit.
 	one e: Entrepot | {
 		all r: Receptacle | r = e || no r.produits.t 
-		all d: Drone | d.i.t = e.i && d.destination.t = e && no d.chemin.t
+		all d: Drone | d.i.t = e.i && d.destination.t = e && d.chemin.t.that = e
 		all p: Produit | p in e.produits.t
 	}
 	// un produit ne peut être dans plusieurs commandes
@@ -157,7 +158,7 @@ pred majDrone[t, t': Time, d: Drone] {
 				d.produits.t' = c.produits.t
 				c.produits.t not in e.produits.t'
 				d.destination.t' = c.adresse
-				//Chemin[e, c.adresse, d.chemin.t']
+				Chemin[e, c.adresse, d.chemin.t']
 			}
 		} else {//on livre
 			#d.produits.t' = 0
@@ -190,5 +191,5 @@ pred avancer[t, t': Time, d: Drone] {
 }
 
 run Simulation for exactly 1 Drone, 3 Receptacle, 
-							 1 Time, 1 Produit, 10 Intersection, exactly 1 Commande, 10 Chain, 4 Int
+							 exactly 15 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 // attention à ne pas contredire les faits NbDrones et NbReceptacles !

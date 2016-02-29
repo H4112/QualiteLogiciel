@@ -111,8 +111,8 @@ fact CheminExiste {
 pred Chemin[depr, arrr, prochain: Receptacle] {
 	one dep, arr: Chain | dep.that = depr && arr.that = arrr &&
 	no arr.nextc && //fin de la chaîne : pointe sur rien
-	arr in dep.^nextc &&  //on atteint l'arrivée en partant du départ
-	(all c: Chain | c.that not in c.nextc.^nextc.that) && //on n'a aucune boucle
+	arr in dep.*nextc &&  //on atteint l'arrivée en partant du départ
+	(all c: Chain | c.that not in c.nextc.*nextc.that) && //on n'a aucune boucle
 	prochain = dep.nextc.that
 }
 
@@ -123,7 +123,7 @@ one sig LaCommande extends Commande {}
 //et.... pas de commande ? Mais alors elles apparaissent comment et où ?
 pred init[t: Time] {
 	no Drone.produits.t
-	one lc: LaCommande | #lc.produits.t = 1 && all c: Commande | lc = c || #c.produits.t = 0
+	one lc: LaCommande | #lc.produits.t = 2 && all c: Commande | lc = c || #c.produits.t = 0
 	//soit r est l'entrepôt, soit c'est un réceptacle et donc pas de produit.
 	one e: Entrepot | {
 		all r: Receptacle | r = e || no r.produits.t 
@@ -137,12 +137,10 @@ pred Simulation {
 	all t: Time - last | let t' = t.next | -- between each timestep
 	{
 		all d: Drone | majDrone[t,t',d]
-		// màj produits de l'entrepot
-		//some e: Entrepot | all p:Produit | (p in e.produits.t && no d: Drone | p in d.produits.t') => p in e.produits.t' else p not in e.produits.t'
-		// màj produits des réceptacles
-		//all r: Receptacle | some e: Entrepot | (r != e && (no d:Drone | d.i.t = r.i && r = d.destination.t)) => r.produits.t' = r.produits.t
 		// màj produits des commandes
-		//all c: Commande | !(#c.produits.t' = 0) => c.produits.t' = c.produits.t
+		all c: Commande | #c.produits.t' != 0 => c.produits.t' = c.produits.t
+		// màj produits des réceptacles
+		all r: Receptacle | (no d: Drone | d.destination.t = r && d.i.t = r.i) => r.produits.t' = r.produits.t
 	}
 }
 
@@ -188,5 +186,5 @@ pred avancer[t, t': Time, d: Drone] {
 }
 
 run Simulation for exactly 1 Drone, 3 Receptacle, 
-							 5 Time, 1 Produit, 10 Intersection, 1 Commande, 10 Chain, 4 Int
+							 exactly 10 Time, 2 Produit, 10 Intersection, 1 Commande, 10 Chain, 4 Int
 // attention à ne pas contredire les faits NbDrones et NbReceptacles !

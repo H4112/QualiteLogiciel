@@ -5,7 +5,7 @@ open util/ordering[Time] as to
 
 //constantes de l'énoncé, fixées arbitrairement
 let MAPSIZE = 10
-let DNB = 3
+let DNB = 1
 let RNB = 3
 let RCAP = 10
 let DCAP = 10
@@ -29,30 +29,36 @@ sig Time {}
 
 //position sur le plan
 sig Intersection {
-    x,y : Int
+	x,y : Int
 }
 
 //drone transportant des produits
 sig Drone {
-    i: Intersection->Time,
-    produits: Produit->Time,
-    destination: Receptacle->Time
+	i: Intersection->Time,
+	produits: Produit->Time,
+	destination: Receptacle->Time,
+	etape: Receptacle lone->Time
 }
 
 //destination possible pour les produits
 sig Receptacle {
-    i: Intersection,
-    produits: Produit->Time
+	i: Intersection,
+	produits: Produit->Time
 }
+
 
 //commande possédant des produits à livrer à l'adresse indiquée
 sig Commande {
-    produits: Produit->Time,
-    adresse: Receptacle
+	produits: Produit->Time,
+	adresse: one Receptacle
 }
 
 //entrepôt où se trouvent les produits à l'instant t0
 one sig Entrepot extends Receptacle {}
+
+fact NoCommandeEntrepot {
+	no c: Commande | some e: Entrepot | c.adresse = e
+}
 
 //limites du plan : toutes les intersections se trouvent à x et y entre 0 et MAPSIZE
 fact Map { all i : Intersection | i.x >= 0 && i.y >= 0 && i.x <= MAPSIZE && i.y <= MAPSIZE }
@@ -97,15 +103,16 @@ fact ChainMaxDist {
 //il existe toujours une suite de réceptacles (chemin) entre l'entrepôt et n'importe quel réceptacle,
 //où chaque réceptacle de cette suite est séparé du précédent par une distance d'au plus 3
 fact CheminExiste {
-	all e: Entrepot, r: Receptacle |
-		e = r || Chemin[e, r]
+	all e: Entrepot, r: Receptacle | some _: Receptacle |
+		e = r || Chemin[e, r, _]
 }
 
-pred Chemin[depr, arrr: Receptacle] {
+pred Chemin[depr, arrr, prochain: Receptacle] {
 	one dep, arr: Chain | dep.that = depr && arr.that = arrr &&
 	no arr.nextc && //fin de la chaîne : pointe sur rien
 	arr in dep.*nextc &&  //on atteint l'arrivée en partant du départ
-	(all c: Chain | c.that not in c.nextc.*nextc.that) //on n'a aucune boucle
+	(all c: Chain | c.that not in c.nextc.*nextc.that) && //on n'a aucune boucle
+	prochain = dep.nextc.that
 }
 
 //initialisation : pas de produits dans les drones, pas de produits dans les réceptacles,
@@ -113,25 +120,59 @@ pred Chemin[depr, arrr: Receptacle] {
 //et.... pas de commande ? Mais alors elles apparaissent comment et où ?
 pred init[t: Time] {
 	no Drone.produits.t
-    no Commande
+	one commande: Commande | #commande.produits.t = 1
 	//soit r est l'entrepôt, soit c'est un réceptacle et donc pas de produit.
-    one e: Entrepot | all r:Receptacle | r = e || no r.produits.t 
-    one e: Entrepot | all d: Drone | e.i = d.i.t
-    no Drone.destination.t
+	one e: Entrepot | all r:Receptacle | r = e || no r.produits.t 
+	one e: Entrepot | all d: Drone | e.i = d.i.t && d.destination.t = e
+	one e: Entrepot | all p: Produit | p in e.produits.t
 }
 
 pred Simulation {
 	init[first]
-    all t: Time - last | let t' = t.next | -- between each timestep
-    all d: Drone |
-    move[t,t',d]
+	all t: Time - last | let t' = t.next | -- between each timestep
+	{
+		all d: Drone | majDrone[t,t',d]
+	}
 }
 
-pred move[t, t': Time, d: Drone] {
-	1=1
+pred majDrone[t, t': Time, d: Drone] {
+	(some e: Entrepot | d.i.t = d.destination.t.i && d.i.t = e.i) => //on prend une commande
+		(some e: Entrepot | one c: Commande | #c.produits.t > 0
+		&& no c.produits.t' && d.produits.t' = c.produits.t
+		&& c.produits.t not in e.produits.t'
+		&& d.destination.t' = c.adresse
+		&& Chemin[e, c.adresse, d.etape.t'])
+
+	(some e: Entrepot | d.i.t = d.destination.t.i && d.i.t != e.i) => //on livre
+		(some e: Entrepot | no d.produits.t'
+		&& d.produits.t in d.destination.t.produits.t' 
+		&& d.destination.t' = e
+		&& Chemin[d.destination.t, e, d.etape.t'])
+
+	(d.i.t = d.destination.t.i) => d.i.t' = d.i.t
+
+	(d.i.t != d.destination.t.i && d.i.t = d.etape.t.i) => //on cherche la prochaine destination
+		(Chemin[d.etape.t, d.destination.t, d.etape.t'])
+
+	(d.i.t != d.destination.t.i && d.i.t != d.etape.t.i) => d.etape.t' = d.etape.t
+	
+	(d.i.t != d.destination.t.i) => (avancer[t, t', d]
+		&& d.destination.t' = d.destination.t
+		&& d.produits.t' = d.produits.t)  //on avance seulement
+}
+
+//avancer le drone d'un pas en x et si les x sont déjà alignés,
+//avancer d'un pas en y
+pred avancer[t, t': Time, d: Drone] {
+	d.etape.t'.i.x < d.i.t.x => (d.i.t'.x = d.i.t.x.sub[1] && d.i.t'.y = d.i.t.y)
+	d.etape.t'.i.x > d.i.t.x => (d.i.t'.x = d.i.t.x.add[1] && d.i.t'.y = d.i.t.y)
+	(d.etape.t'.i.x = d.i.t.x && d.etape.t'.i.y < d.i.t.y) => 
+									(d.i.t'.x = d.i.t.x && d.i.t'.y = d.i.t.y.sub[1])
+	(d.etape.t'.i.x = d.i.t.x && d.etape.t'.i.y > d.i.t.y) => 
+									(d.i.t'.x = d.i.t.x && d.i.t'.y = d.i.t.y.add[1])
 }
 
 
-run Simulation for exactly 3 Drone, 5 Receptacle, 
-							 1 Time, 5 Produit, 10 Intersection, 3 Commande, 4 Chain, 6 Int
+run Simulation for exactly 1 Drone, 5 Receptacle, 
+							 3 Time, 5 Produit, 10 Intersection, 1 Commande, 10 Chain, 6 Int
 // attention à ne pas contredire les faits NbDrones et NbReceptacles !

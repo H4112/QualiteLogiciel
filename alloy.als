@@ -73,7 +73,7 @@ fact NoCommandeEntrepot {
 fact Map { all i : Intersection | i.x >= 0 && i.y >= 0 && i.x < MAPSIZE && i.y < MAPSIZE }
 
 //nombre de drones connu
-//fact NbDrones { #Drone = DNB }
+fact NbDrones { #Drone > 0 }
 
 //nombre de réceptacles connu
 //fact NbReceptacles { #Receptacle = RNB }
@@ -143,17 +143,15 @@ pred init[t: Time] {
 	all c: Commande | #c.produits.t > 0
 	//soit r est l'entrepôt, soit c'est un réceptacle et donc pas de produit.
 	one e: Entrepot | {
-		all r: Receptacle | r = e || (no r.produits.t && distance[e.i,r.i] = 2)
+		all r: Receptacle | r = e || no r.produits.t
 		all d: Drone | {
 			d.i.t = e.i
 			d.destination.t = e
 			d.chemin.t.that = e
 			d.batterie.t = BCAP
 		}
-		all p: Produit | p in e.produits.t
+		all p: Produit | p in e.produits.t && one c: Commande | p in c.produits.t
 	}
-	// un produit ne peut être dans plusieurs commandes
-	all p: Produit | lone c: Commande | p in c.produits.t
 }
 
 pred Simulation {
@@ -217,7 +215,6 @@ pred majDrone[t, t': Time, d: Drone] {
 }
 
 //avancer le drone d'un pas en x et si les x sont déjà alignés, avancer d'un pas en y
-//TODO : si le drone ne peut pas avancer en x, tenter en y
 pred avancer[t, t': Time, d: Drone] {
 	d.i.t.x = d.chemin.t'.that.i.x => {
 		d.i.t'.x = d.i.t.x
@@ -252,6 +249,7 @@ fact IlFautQueCaBouge {
 		some d: Drone | d.i.t' = d.i.t => (d.produits.t' != d.produits.t || d.batterie.t' != d.batterie.t)
 }
 */
+
 /***** TESTS *****/
 
 fact { Simulation }
@@ -275,19 +273,32 @@ check PasDeDoublons for 2 Drone, 3 Receptacle, 8 Time, 4 Produit, 12 Intersectio
 assert Pas2DronesMemeIntersection {
 	one e: Entrepot | all t: Time | no disj d1,d2: Drone | d1.i.t = d2.i.t && d1.i.t != e.i
 }
-check Pas2DronesMemeIntersection for 2 Drone, 3 Receptacle, 8 Time, 4 Produit, 12 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+check Pas2DronesMemeIntersection for exactly 2 Drone, 2 Receptacle, 8 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 
 assert CapaciteBatterie {
 	all d: Drone, t: Time | d.batterie.t >= 0 && d.batterie.t <= BCAP
 }
-check CapaciteBatterie for 1 Drone, 3 Receptacle, 8 Time, 4 Produit, 12 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+check CapaciteBatterie for 2 Drone, 2 Receptacle, 10 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 
 assert BatterieSeVide {
 	all d: Drone, t: Time - last | let t' = t.next | d.i.t != d.i.t' => d.batterie.t' = d.batterie.t.sub[1]
 }
-check BatterieSeVide for 2 Drone, 3 Receptacle, 10 Time, 4 Produit, 12 Intersection, exactly 3 Commande, 10 Chain, 4 Int
+check BatterieSeVide for 1 Drone, 3 Receptacle, 10 Time, 4 Produit, 12 Intersection, exactly 3 Commande, 10 Chain, 4 Int
 
+assert FinSimulation {
+	one e: Entrepot | some t: Time {
+		all c: Commande | {
+			#c.produits.t = 0
+			all p: c.produits.first |	one r: Receptacle | p in r.produits.t
+		}
+		all d: Drone {
+			#d.produits.t = 0
+			d.i.t = e.i
+		}
+	}
+}
+check FinSimulation for exactly 4 Drone, 2 Receptacle, 15 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 /***** SIMULATION *****/
 
-run Simulation for exactly 2 Drone, 2 Receptacle, 12 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+run Simulation for exactly 4 Drone, 2 Receptacle, 15 Time, exactly 4 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 // attention à ne pas contredire les faits NbDrones et NbReceptacles !

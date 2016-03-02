@@ -3,20 +3,6 @@ open util/integer
 //permet d'utiliser time.next pour se déplacer dans le temps
 open util/ordering[Time] as to
 
-//constantes de l'énoncé, fixées arbitrairement
-// taille de la carte (0..MAPSIZE-1)^2
-let MAPSIZE = 2
-// nb de drones
-//let DNB = 2
-// nb de réceptacles
-//let RNB = 3
-// capacité des réceptacles
-let RCAP = 7
-// capacité des drones
-let DCAP = 7
-// capacité de la batterie
-let BCAP = 3
-
 //calcule la valeur absolue d'un nombre
 fun abs[x: Int]: Int {
 	x >= 0 => x else x.mul[-1]
@@ -162,7 +148,7 @@ pred Simulation {
 		// màj produits entrepot
 		all p: Produit | one e: Entrepot | (p in e.produits.t && (no d: Drone | p in d.produits.t')) => p in e.produits.t' else p not in e.produits.t'
 		// màj produits des commandes
-		all c: Commande | #c.produits.t' != 0 => c.produits.t' = c.produits.t
+		all c: Commande, p: Produit | (p in c.produits.t && (no d: Drone | p in d.produits.t')) => p in c.produits.t' else p not in c.produits.t'
 		// màj produits des réceptacles
 		all r: Receptacle | (no d: Drone | d.destination.t = r && d.i.t = r.i) => r.produits.t' = r.produits.t
 	}
@@ -180,14 +166,16 @@ pred majDrone[t, t': Time, d: Drone] {
 				d.i.t' = d.i.t
 			}
 			else one c: {c: Commande | #c.produits.t > 0 && no d': Drone | d != d' && c.produits.t in d'.produits.t'} | {
-				#c.produits.t' = 0
-				d.produits.t' = c.produits.t
-				c.produits.t not in e.produits.t'
+				#d.produits.t' = DCAP || #c.produits.t' = 0
+				d.produits.t' in c.produits.t
+				d.produits.t' not in c.produits.t'
+				no d': Drone | d' != d && some d.produits.t' & d'.produits.t'
+				//d.produits.t not in e.produits.t'
 				d.destination.t' = c.adresse
 				Chemin[e, c.adresse, d.chemin.t']
 			}
 		} else {//on livre
-			#d.produits.t' = 0
+			no d.produits.t'
 			d.destination.t.produits.t' = (d.destination.t.produits.t + d.produits.t)
 			d.destination.t' = e
 			Chemin[d.destination.t, e, d.chemin.t']
@@ -250,6 +238,20 @@ fact IlFautQueCaBouge {
 }
 */
 
+/***** CONSTANTES *****/
+// taille de la carte (0..MAPSIZE-1)^2
+let MAPSIZE = 2
+// nb de drones
+//let DNB = 2
+// nb de réceptacles
+//let RNB = 3
+// capacité des réceptacles
+let RCAP = 7
+// capacité des drones
+let DCAP = 2
+// capacité de la batterie
+let BCAP = 3
+
 /***** TESTS *****/
 
 fact { Simulation }
@@ -289,7 +291,7 @@ assert FinSimulation {
 	one e: Entrepot | some t: Time {
 		all c: Commande | {
 			#c.produits.t = 0
-			all p: c.produits.first |	one r: Receptacle | p in r.produits.t
+			all p: c.produits.first | p in c.adresse.produits.t
 		}
 		all d: Drone {
 			#d.produits.t = 0
@@ -297,8 +299,9 @@ assert FinSimulation {
 		}
 	}
 }
-check FinSimulation for exactly 4 Drone, 2 Receptacle, 15 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+check FinSimulation for exactly 2 Drone, 2 Receptacle, 23 Time, exactly 6 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+
 /***** SIMULATION *****/
 
-run Simulation for exactly 4 Drone, 2 Receptacle, 15 Time, exactly 4 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+run Simulation for exactly 4 Drone, exactly 3 Receptacle, 15 Time, exactly 8 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 // attention à ne pas contredire les faits NbDrones et NbReceptacles !

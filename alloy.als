@@ -5,7 +5,7 @@ open util/ordering[Time]
 
 //constantes de l'énoncé, fixées arbitrairement
 // taille de la carte (0..MAPSIZE-1)^2
-let MAPSIZE = 4
+let MAPSIZE = 3
 
 // nb de drones et nb de réceptacles : fixé lors de l'exécution de l'assert / run
 
@@ -15,6 +15,10 @@ let RCAP = 7
 let DCAP = 7
 // capacité de la batterie
 let BCAP = 3
+
+let END = -1
+let NON_BLOQUE = 0
+let BLOQUE = 1
 
 //calcule la valeur absolue d'un nombre
 fun abs[x: Int]: Int {
@@ -44,7 +48,8 @@ sig Drone {
 	produits: Produit->Time,
 	destination: Receptacle one->Time,
 	chemin: Chain one->Time,
-	batterie: Int one->Time
+	batterie: Int one->Time,
+	bloque: Int one->Time
 }
 
 //destination possible pour les produits
@@ -89,6 +94,10 @@ fact CapaciteDrone { all d: Drone, t: Time | #d.produits.t <= DCAP }
 //les réceptacles ne peuvent contenir plus de RCAP produits
 //TODO et si plus de RCAP produits doivent être livrés à ce réceptacle ? On le vide pas de temps à autre ?
 fact CapaciteReceptacle { all r: Receptacle, t: Time | #r.produits.t <= RCAP }
+
+//nous devons avoir au moins 1 drone qui prend l'initiative d'avancer
+fact PasInterblocage { all t: Time | (all d: Drone | d.bloque.t = END) ||
+							(some droneNonBloque: Drone | droneNonBloque.bloque.t = NON_BLOQUE) }
 
 
 /***** CHEMIN ****/
@@ -186,6 +195,7 @@ pred majDrone[t, t': Time, d: Drone] {
 				d.chemin.t' = d.chemin.t
 				d.batterie.t' = d.batterie.t
 				d.i.t' = d.i.t
+				d.bloque.t = END
 			}
 			else one c: {c: Commande | #c.produits.t > 0 && no d': Drone | d != d' && c.produits.t in d'.produits.t'} | {
 				//il y a une commande, on la charge
@@ -194,12 +204,14 @@ pred majDrone[t, t': Time, d: Drone] {
 				c.produits.t not in e.produits.t'
 				d.destination.t' = c.adresse
 				Chemin[e, c.adresse, d.chemin.t']
+				d.bloque.t = NON_BLOQUE
 			}
 		} else { //on livre une commande à un réceptacle : décharger les produits
 			#d.produits.t' = 0
 			d.destination.t.produits.t' = (d.destination.t.produits.t + d.produits.t)
 			d.destination.t' = e
 			Chemin[d.destination.t, e, d.chemin.t']
+			d.bloque.t = NON_BLOQUE
 		}
 		//le drone est immobile : la position et la batterie sont intactes
 		d.i.t' = d.i.t
@@ -210,6 +222,8 @@ pred majDrone[t, t': Time, d: Drone] {
 			//on doit charger la batterie
 			d.batterie.t' = d.batterie.t.add[1]
 			d.chemin.t' = d.chemin.t
+			d.bloque.t = NON_BLOQUE
+			d.i.t' = d.i.t
 		}
 		else {
 			//passer à l'étape suivante de l'itinéraire si besoin
@@ -220,9 +234,10 @@ pred majDrone[t, t': Time, d: Drone] {
 				d.batterie.t' = d.batterie.t.sub[1]
 			else
 				d.batterie.t' = d.batterie.t
+
+			//calculer la position suivante, et ne pas changer la destination et les produits
+			avancer[t, t', d]
 		}
-		//calculer la position suivante, et ne pas changer la destination et les produits
-		avancer[t, t', d]
 		d.destination.t' = d.destination.t
 		d.produits.t' = d.produits.t
 	}
@@ -254,6 +269,8 @@ pred avancer[t, t': Time, d: Drone] {
 				d.i.t'.y = d.i.t.y
 		}
 	}
+
+	d.i.t = d.i.t' => d.bloque.t = BLOQUE else d.bloque.t = NON_BLOQUE
 }
 
 //indique si l'intersection est disponible, c'est-à-dire non occupée par un autre drone
@@ -263,7 +280,7 @@ pred avancer[t, t': Time, d: Drone] {
 pred intersectionDisponible[t, t': Time, d: Drone, ix,iy: Int] {
 	some e: Entrepot | {
 		((e.i.x = ix && e.i.y = iy) || (all d': Drone | (d' != d && d'.i.t'.x = ix && d'.i.t'.y = iy) 
-				=> (d'.batterie.t' = d'.batterie.t && d'.produits.t' = d'.produits.t)))
+				=> (d'.batterie.t' = d'.batterie.t && d'.produits.t' = d'.produits.t && d'.bloque.t = NON_BLOQUE)))
 	}
 }
 

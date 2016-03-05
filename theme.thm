@@ -10,13 +10,13 @@
 <defaultedge/>
 
 <node>
-   <type name="Int"/>
    <type name="String"/>
    <type name="Time"/>
    <type name="univ"/>
+   <type name="ordering/Ord"/>
    <type name="seq/Int"/>
-   <set name="$CapaciteBatterie_d" type="Drone"/>
-   <set name="$CapaciteBatterie_t" type="Time"/>
+   <set name="First" type="ordering/Ord"/>
+   <set name="Next" type="ordering/Ord"/>
 </node>
 
 <node shape="Dbl Circle" color="Red">
@@ -39,13 +39,8 @@
    <type name="Commande"/>
 </node>
 
-<node style="Bold">
-   <set name="First" type="to/Ord"/>
-   <set name="Next" type="to/Ord"/>
-</node>
-
 <node visible="no">
-   <type name="to/Ord"/>
+   <type name="Int"/>
 </node>
 
 <node visible="no" shape="Ellipse" color="Yellow">
@@ -55,6 +50,10 @@
 <node visible="no" shape="Hexagon" color="White">
    <type name="Produit"/>
 </node>
+
+<edge attribute="yes">
+   <relation name="bloque"> <type name="Drone"/> <type name="Int"/> </relation>
+</edge>
 
 <edge visible="no" attribute="yes">
    <relation name="batterie"> <type name="Drone"/> <type name="Int"/> </relation>

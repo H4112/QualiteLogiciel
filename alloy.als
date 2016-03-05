@@ -5,7 +5,7 @@ open util/ordering[Time]
 
 //constantes de l'énoncé, fixées arbitrairement
 // taille de la carte (0..MAPSIZE-1)^2
-let MAPSIZE = 2
+let MAPSIZE = 4
 
 // nb de drones et nb de réceptacles : fixé lors de l'exécution de l'assert / run
 
@@ -292,7 +292,7 @@ check PasDeDoublons for 2 Drone, 3 Receptacle, 8 Time, 4 Produit, 12 Intersectio
 assert Pas2DronesMemeIntersection {
 	one e: Entrepot | all t: Time | no disj d1,d2: Drone | d1.i.t = d2.i.t && d1.i.t != e.i
 }
-check Pas2DronesMemeIntersection for exactly 2 Drone, 2 Receptacle, 8 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+check Pas2DronesMemeIntersection for exactly 3 Drone, 2 Receptacle, 8 Time, 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int
 
 //la capacité de la batterie est toujours entre 0 et DCAP
 assert CapaciteBatterie {

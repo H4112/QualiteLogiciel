@@ -363,3 +363,7 @@ run SimulationLigne for exactly 3 Drone, 2 Receptacle, 25 Time, exactly 3 Produi
 //générer une simulation avec 3 drones, 1 réceptacle + entrepôt, et 3 commandes.
 //MAPSIZE=3 conseillé
 run Simulation for exactly 3 Drone, 2 Receptacle, 15 Time, exactly 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int
+
+//générer une simulation avec 3 drones, 2 réceptacles + entrepôt, et 3 commandes.
+//MAPSIZE=3 conseillé
+run Simulation for exactly 3 Drone, 3 Receptacle, 15 Time, exactly 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int

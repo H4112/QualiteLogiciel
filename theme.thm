@@ -51,14 +51,14 @@
    <type name="Produit"/>
 </node>
 
-<edge attribute="yes">
-   <relation name="bloque"> <type name="Drone"/> <type name="Int"/> </relation>
-</edge>
-
 <edge visible="no" attribute="yes">
    <relation name="batterie"> <type name="Drone"/> <type name="Int"/> </relation>
    <relation name="x"> <type name="Intersection"/> <type name="Int"/> </relation>
    <relation name="y"> <type name="Intersection"/> <type name="Int"/> </relation>
+</edge>
+
+<edge visible="no" attribute="yes" constraint="no">
+   <relation name="bloquePar"> <type name="Drone"/> <type name="Drone"/> </relation>
 </edge>
 
 <edge visible="no" layout="yes" attribute="yes">

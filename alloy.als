@@ -3,19 +3,6 @@ open util/integer
 //permet d'utiliser time.next pour se déplacer dans le temps
 open util/ordering[Time]
 
-//constantes de l'énoncé, fixées arbitrairement
-// taille de la carte (0..MAPSIZE-1)^2
-let MAPSIZE = 3
-
-// nb de drones et nb de réceptacles : fixé lors de l'exécution de l'assert / run
-
-// capacité des réceptacles
-let RCAP = 7
-// capacité des drones
-let DCAP = 7
-// capacité de la batterie
-let BCAP = 3
-
 //calcule la valeur absolue d'un nombre
 fun abs[x: Int]: Int {
 	x >= 0 => x else x.mul[-1]
@@ -166,8 +153,11 @@ pred Simulation {
 			(p in e.produits.t && (no d: Drone | p in d.produits.t')) => 
 			p in e.produits.t' 
 			else p not in e.produits.t'
-		// màj produits des commandes : les produits des commandes non traitées ne changent pas
-		all c: Commande | #c.produits.t' != 0 => c.produits.t' = c.produits.t
+		// màj produits des commandes : les produits qui sont dans des drones ne sont plus dans les commandes
+		all c: Commande, p: Produit | 
+			(p in c.produits.t && (no d: Drone | p in d.produits.t')) => 
+			p in c.produits.t' 
+			else p not in c.produits.t'
 		// màj produits des réceptacles : si aucun drone n'est arrivé au réceptacle, les produits ne changent pas
 		all r: Receptacle | (no d: Drone | d.destination.t = r && d.i.t = r.i) => r.produits.t' = r.produits.t
 	}
@@ -188,15 +178,16 @@ pred majDrone[t, t': Time, d: Drone] {
 				d.i.t' = d.i.t
 			}
 			else one c: {c: Commande | #c.produits.t > 0 && no d': Drone | d != d' && c.produits.t in d'.produits.t'} | {
-				//il y a une commande, on la charge
-				#c.produits.t' = 0
-				d.produits.t' = c.produits.t
-				c.produits.t not in e.produits.t'
+				//on charge la commande
+				#d.produits.t' = DCAP || #c.produits.t' = 0 //on charge au maximum de la capacité du drone
+				d.produits.t' in c.produits.t
+				d.produits.t' not in c.produits.t'
+				no d': Drone | d' != d && some d.produits.t' & d'.produits.t' //le produit est dans 1 seul drone
 				d.destination.t' = c.adresse
 				Chemin[e, c.adresse, d.chemin.t']
 			}
 		} else { //on livre une commande à un réceptacle : décharger les produits
-			#d.produits.t' = 0
+			no d.produits.t'
 			d.destination.t.produits.t' = (d.destination.t.produits.t + d.produits.t)
 			d.destination.t' = e
 			Chemin[d.destination.t, e, d.chemin.t']
@@ -284,6 +275,16 @@ pred estNonBloqueur[t, t': Time, d, d': Drone, ix,iy: Int] {
 		!(some dNB: d'.*(bloquePar.t) | no dNB.bloquePar.t))
 }
 
+/***** CONSTANTES *****/
+// taille de la carte (0..MAPSIZE-1)^2
+let MAPSIZE = 2
+// capacité des réceptacles
+let RCAP = 7
+// capacité des drones
+let DCAP = 2
+// capacité de la batterie
+let BCAP = 3
+
 /***** TESTS *****/
 //MAPSIZE=3 conseillé
 
@@ -328,13 +329,12 @@ assert BatterieSeVide {
 check BatterieSeVide for 1 Drone, 3 Receptacle, 10 Time, 4 Produit, 12 Intersection, exactly 3 Commande, 10 Chain, 4 Int
 
 //la simulation se termine (tous les drones sont à l'entrepôt, tous les produits sont à leur destination)
-//très long (dizaines de minutes), mais il est nécessaire d'avoir au moins 17 Time sinon la simulation n'a pas le temps de se
-//terminer, et cela compte comme un contre-exemple
+//Il faut que MAPSIZE=2 (?)
 assert FinSimulation {
 	one e: Entrepot | some t: Time {
 		all c: Commande | {
 			#c.produits.t = 0
-			all p: c.produits.first |	one r: Receptacle | p in r.produits.t
+			all p: c.produits.first | p in c.adresse.produits.t
 		}
 		all d: Drone {
 			#d.produits.t = 0
@@ -342,7 +342,7 @@ assert FinSimulation {
 		}
 	}
 }
-check FinSimulation for exactly 4 Drone, 2 Receptacle, 17 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
+check FinSimulation for exactly 2 Drone, 2 Receptacle, 23 Time, exactly 6 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 
 //les drones ne se déplacent jamais d'une distance de plus de 1
 assert AucuneTeleportation {
@@ -367,3 +367,7 @@ run Simulation for exactly 3 Drone, 2 Receptacle, 15 Time, exactly 3 Produit, 10
 //générer une simulation avec 3 drones, 2 réceptacles + entrepôt, et 3 commandes.
 //MAPSIZE=3 conseillé
 run Simulation for exactly 3 Drone, 3 Receptacle, 15 Time, exactly 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int
+
+//générer une simulation qui démontre la gestion de la capacité des drones
+//MAPSIZE=2 conseillé
+run Simulation for exactly 4 Drone, exactly 3 Receptacle, 15 Time, exactly 8 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int

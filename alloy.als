@@ -75,7 +75,6 @@ fact ReceptaclesSepares { all disj r1, r2: Receptacle | r1.i != r2.i }
 fact CapaciteDrone { all d: Drone, t: Time | #d.produits.t <= DCAP }
 
 //les réceptacles ne peuvent contenir plus de RCAP produits
-//TODO et si plus de RCAP produits doivent être livrés à ce réceptacle ? On le vide pas de temps à autre ?
 fact CapaciteReceptacle { all r: Receptacle, t: Time | #r.produits.t <= RCAP }
 
 /***** CHEMIN ****/
@@ -278,7 +277,7 @@ pred estNonBloqueur[t, t': Time, d, d': Drone, ix,iy: Int] {
 /***** CONSTANTES *****/
 // taille de la carte (0..MAPSIZE-1)^2
 let MAPSIZE = 2
-// capacité des réceptacles
+// capacité des réceptacles ; non géré par le programme
 let RCAP = 7
 // capacité des drones
 let DCAP = 2
@@ -286,11 +285,11 @@ let DCAP = 2
 let BCAP = 3
 
 /***** TESTS *****/
-//MAPSIZE=3 conseillé
 
 fact { Simulation }
 
 //aucune duplication de produits : ils sont dans UN SEUL réceptacle OU dans UN drone
+//MAPSIZE=3 conseillé
 assert PasDeDoublons {
 	all p: Produit | all t: Time {
 		all r: Receptacle | p in r.produits.t => {
@@ -310,26 +309,28 @@ check PasDeDoublons for 2 Drone, 3 Receptacle, 8 Time, 4 Produit, 12 Intersectio
 //deux drones ne partagent jamais la même intersection (sauf à l'entrepôt)
 //long (dizaines de minutes) mais il est nécessaire d'avoir 3 drones/commandes/produits car des problèmes de collision
 //sont apparus lors du passage de 2 à 3 drones.
+//MAPSIZE=3 conseillé
 assert Pas2DronesMemeIntersection {
 	one e: Entrepot | all t: Time | no disj d1,d2: Drone | d1.i.t = d2.i.t && d1.i.t != e.i
 }
 check Pas2DronesMemeIntersection for exactly 3 Drone, 2 Receptacle, 8 Time, 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int
 
 //la capacité de la batterie est toujours entre 0 et DCAP
-//~15 min sur mon PC (TODO trop long !)
+//MAPSIZE=2 conseillé
 assert CapaciteBatterie {
 	all d: Drone, t: Time | d.batterie.t >= 0 && d.batterie.t <= BCAP
 }
 check CapaciteBatterie for 2 Drone, 2 Receptacle, 10 Time, 2 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 
 //la batterie se vide de 1 unité lorsque le drone se déplace
+//MAPSIZE=3 conseillé
 assert BatterieSeVide {
 	all d: Drone, t: Time - last | let t' = t.next | d.i.t != d.i.t' => d.batterie.t' = d.batterie.t.sub[1]
 }
 check BatterieSeVide for 1 Drone, 3 Receptacle, 10 Time, 4 Produit, 12 Intersection, exactly 3 Commande, 10 Chain, 4 Int
 
 //la simulation se termine (tous les drones sont à l'entrepôt, tous les produits sont à leur destination)
-//Il faut que MAPSIZE=2 (?)
+//Il faut que MAPSIZE=2
 assert FinSimulation {
 	one e: Entrepot | some t: Time {
 		all c: Commande | {
@@ -345,6 +346,7 @@ assert FinSimulation {
 check FinSimulation for exactly 2 Drone, 2 Receptacle, 23 Time, exactly 6 Produit, 10 Intersection, exactly 2 Commande, 10 Chain, 4 Int
 
 //les drones ne se déplacent jamais d'une distance de plus de 1
+//MAPSIZE=3 conseillé
 assert AucuneTeleportation {
 	all d: Drone, t: Time - last | let t' = t.next | distance[d.i.t, d.i.t'] <= 1
 }
@@ -364,9 +366,12 @@ run SimulationLigne for exactly 3 Drone, 2 Receptacle, 25 Time, exactly 3 Produi
 //MAPSIZE=3 conseillé
 run Simulation for exactly 3 Drone, 2 Receptacle, 15 Time, exactly 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int
 
-//générer une simulation avec 3 drones, 2 réceptacles + entrepôt, et 3 commandes.
+//générer une simulation avec 3 drones, 2 réceptacles + entrepôt, et 3 commandes dont au moins 1 par réceptacle.
 //MAPSIZE=3 conseillé
-run Simulation for exactly 3 Drone, 3 Receptacle, 15 Time, exactly 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int
+pred SimulationReceptacles {
+	Simulation && all e: Entrepot | all r: Receptacle | (r = e || some c: Commande | c.adresse = r)
+}
+run SimulationReceptacles for exactly 3 Drone, 3 Receptacle, 15 Time, exactly 3 Produit, 10 Intersection, exactly 3 Commande, 10 Chain, 4 Int
 
 //générer une simulation qui démontre la gestion de la capacité des drones
 //MAPSIZE=2 conseillé
